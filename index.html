@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>発表順ルーレット | Presentation Order Randomizer</title>
+<style>
+  :root{
+    --bg0:#070b1a;
+    --bg1:#0d1430;
+    --accent:#00e5ff;
+    --accent2:#ff2d95;
+    --accent3:#ffd000;
+    --glass:rgba(255,255,255,.06);
+    --glass-border:rgba(255,255,255,.12);
+    --txt:#eaf2ff;
+    --muted:#8a98bd;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    color:var(--txt);
+    background:
+      radial-gradient(1200px 800px at 15% -10%, #15225a 0%, transparent 55%),
+      radial-gradient(1000px 700px at 110% 120%, #45114a 0%, transparent 55%),
+      linear-gradient(160deg,var(--bg0),var(--bg1));
+    min-height:100%;
+    overflow-x:hidden;
+  }
+  header{
+    text-align:center;
+    padding:26px 16px 6px;
+  }
+  header h1{
+    margin:0;
+    font-size:clamp(22px,4vw,40px);
+    letter-spacing:.04em;
+    background:linear-gradient(90deg,var(--accent),var(--accent2),var(--accent3));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    text-shadow:0 0 30px rgba(0,229,255,.25);
+  }
+  header p{margin:6px 0 0;color:var(--muted);font-size:13px;letter-spacing:.06em;}
+
+  .layout{
+    display:grid;
+    grid-template-columns: minmax(360px, 1fr) minmax(320px, 460px);
+    gap:24px;
+    max-width:1180px;
+    margin:10px auto 60px;
+    padding:0 22px;
+  }
+  @media (max-width:900px){
+    .layout{grid-template-columns:1fr;}
+  }
+
+  .panel{
+    background:var(--glass);
+    border:1px solid var(--glass-border);
+    border-radius:22px;
+    backdrop-filter:blur(14px);
+    box-shadow:0 20px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+    padding:22px;
+  }
+
+  /* ---- Wheel ---- */
+  .wheel-wrap{
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:18px;
+  }
+  .wheel-stage{position:relative;width:min(72vw,440px);aspect-ratio:1/1;}
+  canvas{width:100%;height:100%;display:block;
+    filter:drop-shadow(0 0 26px rgba(0,229,255,.20));}
+  .pointer{
+    position:absolute;top:-6px;left:50%;transform:translateX(-50%);
+    width:0;height:0;
+    border-left:18px solid transparent;
+    border-right:18px solid transparent;
+    border-top:30px solid var(--accent3);
+    filter:drop-shadow(0 4px 6px rgba(0,0,0,.5));
+    z-index:5;
+  }
+  .hub{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:74px;height:74px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #fff, #b9c6ff 40%, #5a6bd6 100%);
+    box-shadow:0 0 0 6px rgba(255,255,255,.08), 0 8px 20px rgba(0,0,0,.5);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:12px;color:#1a2150;text-align:center;line-height:1.1;
+    z-index:4;user-select:none;
+  }
+
+  .controls{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;}
+  button{
+    font-family:inherit;cursor:pointer;border:none;border-radius:14px;
+    padding:14px 26px;font-size:16px;font-weight:800;letter-spacing:.05em;
+    color:#04122a;
+    background:linear-gradient(135deg,var(--accent),#7ef9ff);
+    box-shadow:0 8px 24px rgba(0,229,255,.35), inset 0 1px 0 rgba(255,255,255,.6);
+    transition:transform .12s ease, box-shadow .12s ease, opacity .2s;
+  }
+  button:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,229,255,.5);}
+  button:active{transform:translateY(0);}
+  button:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none;}
+  button.ghost{
+    background:transparent;color:var(--txt);
+    border:1px solid var(--glass-border);box-shadow:none;
+  }
+  button.ghost:hover{background:rgba(255,255,255,.08);box-shadow:none;}
+
+  .status{min-height:24px;font-size:14px;color:var(--muted);text-align:center;letter-spacing:.04em;}
+  .big-result{
+    text-align:center;font-weight:900;font-size:clamp(20px,3vw,30px);
+    min-height:38px;
+    background:linear-gradient(90deg,var(--accent3),var(--accent2));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    transition:opacity .3s;
+  }
+
+  /* ---- Order list ---- */
+  .side h2{margin:0 0 14px;font-size:18px;letter-spacing:.08em;color:var(--accent);}
+  .order-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;}
+  .order-item{
+    display:flex;align-items:center;gap:14px;
+    padding:12px 14px;border-radius:14px;
+    background:rgba(255,255,255,.04);
+    border:1px solid var(--glass-border);
+    opacity:0;transform:translateY(10px);
+    animation:pop .45s cubic-bezier(.2,1.2,.3,1) forwards;
+  }
+  @keyframes pop{to{opacity:1;transform:translateY(0);}}
+  .rank{
+    flex:0 0 auto;width:42px;height:42px;border-radius:12px;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:900;font-size:18px;color:#04122a;
+    background:linear-gradient(135deg,var(--accent2),var(--accent3));
+    box-shadow:0 6px 16px rgba(255,45,149,.35);
+  }
+  .order-item .info{display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .order-item .grp{font-weight:800;font-size:15px;}
+  .order-item .members{font-size:12px;color:var(--muted);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .placeholder{color:var(--muted);font-size:13px;text-align:center;padding:20px 0;}
+
+  .footnote{
+    max-width:1180px;margin:0 auto 50px;padding:0 22px;
+    color:var(--muted);font-size:12px;line-height:1.7;
+  }
+  .footnote code{color:var(--accent);background:rgba(0,229,255,.08);padding:1px 6px;border-radius:6px;}
+
+  /* confetti */
+  #confetti{position:fixed;inset:0;pointer-events:none;z-index:50;}
+  .toprow{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .mute{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center;cursor:pointer;user-select:none;}
+</style>
+</head>
+<body>
+  <header>
+    <h1>🎯 発表順ルーレット</h1>
+    <p>ブロックランダム化方式（一様ランダム順列 / crypto乱数）で公平に決定</p>
+  </header>
+
+  <div class="layout">
+    <!-- LEFT: Wheel -->
+    <section class="panel wheel-wrap">
+      <div class="toprow" style="width:100%">
+        <span class="status" id="status" style="text-align:left">スピンを押して開始</span>
+        <label class="mute"><input type="checkbox" id="soundToggle" checked> 🔊 効果音</label>
+      </div>
+      <div class="wheel-stage">
+        <div class="pointer"></div>
+        <canvas id="wheel" width="600" height="600"></canvas>
+        <div class="hub" id="hub">残り<br>8</div>
+      </div>
+      <div class="big-result" id="bigResult"></div>
+      <div class="controls">
+        <button id="spinBtn">🎰 スピン</button>
+        <button id="resetBtn" class="ghost">リセット</button>
+      </div>
+    </section>
+
+    <!-- RIGHT: Order -->
+    <aside class="panel side">
+      <h2>📋 決定した発表順</h2>
+      <ol class="order-list" id="orderList">
+        <li class="placeholder">まだ決まっていません</li>
+      </ol>
+    </aside>
+  </div>
+
+  <p class="footnote">
+    <strong>採用したランダム化手法：</strong>残りのグループから1つずつ均等な確率で抽出する方式（＝Fisher-Yatesシャッフルと等価／ブロックランダム化の考え方）。
+    全グループが重複・抜けなくちょうど1回ずつ並び、すべての順番が等確率になります。
+    乱数は <code>crypto.getRandomValues</code> を棄却サンプリングと併用し、剰余バイアスのない一様乱数を使用しています。
+  </p>
+
+  <canvas id="confetti"></canvas>
+
+<script>
+/* ====== データ ====== */
+const GROUPS = [
+  {no:1, members:[{id:"251436",rome:"TAKEDA, AKARI",ja:"武田 灯"},{id:"301172",rome:"KAWAHARADA, MAYU",ja:"河原田 舞佑"}]},
+  {no:2, members:[{id:"271026",rome:"ATSUMI, MOMOKA",ja:"渥見 桃可"},{id:"301081",rome:"HISANO, AYANE",ja:"久野 絢音"}]},
+  {no:3, members:[{id:"281442",rome:"TAKANO, AMANE",ja:"高野 天音"},{id:"301511",rome:"UEHARA, SEIICHIRO",ja:"植原 誠一郎"}]},
+  {no:4, members:[{id:"291221",rome:"KIMURA, YUNA",ja:"木村 優那"},{id:"301128",rome:"ITO, REIKA",ja:"伊藤 怜和"}]},
+  {no:5, members:[{id:"291383",rome:"NISHIO, EITO",ja:"西尾 瑛人"},{id:"301096",rome:"ICHINOSE, YUKINO",ja:"一ノ瀬 友希乃"}]},
+  {no:6, members:[{id:"291501",rome:"SHOJI, KAEDE",ja:"庄司 楓"},{id:"301445",rome:"SUZUKI, NANAKO",ja:"鈴木 菜々子"}]},
+  {no:7, members:[{id:"291860",rome:"OK, EUNICE",ja:""},{id:"301423",rome:"SHINKAI, KIPPEI",ja:"新海 吉兵"}]},
+  {no:8, members:[{id:"301025",rome:"EMOTO, NOAH",ja:"江本 乃安"},{id:"301387",rome:"SAKAMOTO, SUMIKA",ja:"坂本 澄佳"}]},
+];
+const N = GROUPS.length;
+const SEG = (Math.PI*2)/N;
+const COLORS = ["#00e5ff","#ff2d95","#ffd000","#7c5cff","#27e36b","#ff7a18","#15c0ff","#ff5b8a"];
+
+/* ====== 偏りのない乱数（棄却サンプリング） ====== */
+function randInt(n){               // 0..n-1 を一様に
+  const max = Math.floor(0xFFFFFFFF / n) * n;
+  const buf = new Uint32Array(1);
+  let x;
+  do { crypto.getRandomValues(buf); x = buf[0]; } while (x >= max);
+  return x % n;
+}
+
+/* ====== 状態 ====== */
+let decided = [];                 // 決定済みグループ番号(1始まり)
+let remaining = GROUPS.map(g=>g.no);
+let rotation = 0;                 // 現在のホイール角
+let spinning = false;
+
+/* ====== Canvas ====== */
+const cv = document.getElementById("wheel");
+const ctx = cv.getContext("2d");
+const SIZE = cv.width;
+const CX = SIZE/2, CY = SIZE/2, R = SIZE/2 - 10;
+
+function drawWheel(rot){
+  ctx.clearRect(0,0,SIZE,SIZE);
+  for(let i=0;i<N;i++){
+    const start = rot + i*SEG;
+    const end = start + SEG;
+    const isDone = decided.includes(GROUPS[i].no);
+    ctx.beginPath();
+    ctx.moveTo(CX,CY);
+    ctx.arc(CX,CY,R,start,end);
+    ctx.closePath();
+    if(isDone){
+      ctx.fillStyle = "rgba(120,130,170,.18)";
+    }else{
+      const grad = ctx.createRadialGradient(CX,CY,R*0.25,CX,CY,R);
+      grad.addColorStop(0, COLORS[i]);
+      grad.addColorStop(1, shade(COLORS[i],-30));
+      ctx.fillStyle = grad;
+    }
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(7,11,26,.85)";
+    ctx.stroke();
+
+    // ラベル
+    ctx.save();
+    ctx.translate(CX,CY);
+    ctx.rotate(start + SEG/2);
+    ctx.textAlign = "right";
+    ctx.fillStyle = isDone ? "rgba(255,255,255,.35)" : "#04122a";
+    ctx.font = "900 40px system-ui, sans-serif";
+    ctx.fillText("G"+GROUPS[i].no, R-26, 14);
+    ctx.restore();
+  }
+  // 外周リング
+  ctx.beginPath();
+  ctx.arc(CX,CY,R,0,Math.PI*2);
+  ctx.lineWidth=8;
+  ctx.strokeStyle="rgba(255,255,255,.10)";
+  ctx.stroke();
+}
+function shade(hex,p){
+  const n=parseInt(hex.slice(1),16);
+  let r=(n>>16)+p, g=((n>>8)&255)+p, b=(n&255)+p;
+  r=Math.max(0,Math.min(255,r));g=Math.max(0,Math.min(255,g));b=Math.max(0,Math.min(255,b));
+  return `rgb(${r},${g},${b})`;
+}
+
+/* ====== サウンド ====== */
+let audioCtx=null;
+function beep(freq,dur,type="square",vol=.08){
+  if(!document.getElementById("soundToggle").checked) return;
+  try{
+    audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type=type;o.frequency.value=freq;
+    o.connect(g);g.connect(audioCtx.destination);
+    g.gain.setValueAtTime(vol,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+dur);
+    o.start();o.stop(audioCtx.currentTime+dur);
+  }catch(e){}
+}
+function fanfare(){
+  [523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,.25,"triangle",.12),i*110));
+}
+
+/* ====== スピン ====== */
+const spinBtn=document.getElementById("spinBtn");
+const resetBtn=document.getElementById("resetBtn");
+const statusEl=document.getElementById("status");
+const bigResult=document.getElementById("bigResult");
+const hub=document.getElementById("hub");
+
+function spin(){
+  if(spinning || remaining.length===0) return;
+  spinning=true;
+  spinBtn.disabled=true; resetBtn.disabled=true;
+  bigResult.textContent="";
+  statusEl.textContent="抽選中…";
+
+  // 残りから一様ランダムに選ぶ（＝順列を1つずつ確定 / ブロックランダム化）
+  const pickIdx = randInt(remaining.length);
+  const targetNo = remaining[pickIdx];
+  const segIndex = targetNo - 1;             // 配置はG番号順固定
+
+  // 目標セグメント中心をポインタ(真上 -90°)へ
+  const center = segIndex*SEG + SEG/2;
+  const turns = 5 + randInt(3);              // 演出用の回転数
+  const targetRot = (-Math.PI/2 - center) - turns*Math.PI*2;
+
+  const startRot = rotation % (Math.PI*2);
+  const normTarget = targetRot;              // 連続値でOK
+  const delta = normTarget - startRot;
+  const dur = 4200;
+  const t0 = performance.now();
+  let lastSeg = -1;
+
+  function frame(now){
+    let p = Math.min(1,(now-t0)/dur);
+    const eased = 1 - Math.pow(1-p, 3);      // ease-out cubic
+    rotation = startRot + delta*eased;
+    drawWheel(rotation);
+
+    // セグメント通過音
+    const ang = ((-Math.PI/2 - rotation) % (Math.PI*2) + Math.PI*2) % (Math.PI*2);
+    const curSeg = Math.floor(ang/SEG);
+    if(curSeg!==lastSeg){ lastSeg=curSeg; beep(380+curSeg*12,.04,"square",.05); }
+
+    if(p<1){ requestAnimationFrame(frame); }
+    else { finishSpin(targetNo); }
+  }
+  requestAnimationFrame(frame);
+}
+
+function finishSpin(no){
+  decided.push(no);
+  remaining = remaining.filter(x=>x!==no);
+  drawWheel(rotation);
+  fanfare();
+
+  const g = GROUPS[no-1];
+  bigResult.textContent = `${decided.length}番目 → グループ${no}`;
+  statusEl.textContent = remaining.length>0
+      ? `残り ${remaining.length} グループ`
+      : "🎉 全グループの順番が決定しました！";
+  hub.innerHTML = remaining.length>0 ? `残り<br>${remaining.length}` : "完了!";
+
+  renderOrder();
+  launchConfetti(remaining.length===0 ? 160 : 40);
+
+  spinning=false;
+  resetBtn.disabled=false;
+  if(remaining.length>0){ spinBtn.disabled=false; }
+  else{ spinBtn.disabled=true; }
+}
+
+function renderOrder(){
+  const ol=document.getElementById("orderList");
+  if(decided.length===0){
+    ol.innerHTML='<li class="placeholder">まだ決まっていません</li>';
+    return;
+  }
+  ol.innerHTML="";
+  decided.forEach((no,idx)=>{
+    const g=GROUPS[no-1];
+    const names=g.members.map(m=>m.ja||m.rome).join(" ・ ");
+    const li=document.createElement("li");
+    li.className="order-item";
+    li.style.animationDelay=(idx*0.03)+"s";
+    li.innerHTML=`<div class="rank">${idx+1}</div>
+      <div class="info">
+        <span class="grp">グループ ${no}</span>
+        <span class="members" title="${names}">${names}</span>
+      </div>`;
+    ol.appendChild(li);
+  });
+}
+
+function reset(){
+  decided=[]; remaining=GROUPS.map(g=>g.no);
+  rotation=0; spinning=false;
+  spinBtn.disabled=false; resetBtn.disabled=false;
+  bigResult.textContent=""; statusEl.textContent="スピンを押して開始";
+  hub.innerHTML="残り<br>8";
+  drawWheel(rotation); renderOrder();
+}
+
+spinBtn.addEventListener("click",spin);
+resetBtn.addEventListener("click",reset);
+
+/* ====== 紙吹雪 ====== */
+const confCv=document.getElementById("confetti");
+const cctx=confCv.getContext("2d");
+let parts=[];
+function sizeConf(){confCv.width=innerWidth;confCv.height=innerHeight;}
+sizeConf(); addEventListener("resize",sizeConf);
+function launchConfetti(n){
+  for(let i=0;i<n;i++){
+    parts.push({
+      x:Math.random()*confCv.width, y:-20,
+      vx:(Math.random()-.5)*6, vy:Math.random()*4+2,
+      s:Math.random()*8+4, c:COLORS[Math.floor(Math.random()*COLORS.length)],
+      rot:Math.random()*6.28, vr:(Math.random()-.5)*.3, life:1
+    });
+  }
+  if(!confRunning) runConfetti();
+}
+let confRunning=false;
+function runConfetti(){
+  confRunning=true;
+  cctx.clearRect(0,0,confCv.width,confCv.height);
+  parts.forEach(p=>{
+    p.x+=p.vx;p.y+=p.vy;p.vy+=.12;p.rot+=p.vr;p.life-=.006;
+    cctx.save();cctx.translate(p.x,p.y);cctx.rotate(p.rot);
+    cctx.globalAlpha=Math.max(0,p.life);cctx.fillStyle=p.c;
+    cctx.fillRect(-p.s/2,-p.s/2,p.s,p.s*.6);cctx.restore();
+  });
+  parts=parts.filter(p=>p.life>0 && p.y<confCv.height+30);
+  if(parts.length>0){requestAnimationFrame(runConfetti);}
+  else{cctx.clearRect(0,0,confCv.width,confCv.height);confRunning=false;}
+}
+
+/* init */
+drawWheel(rotation);
+</script>
+</body>
+</html>
