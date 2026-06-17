@@ -4,198 +4,513 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>発表順ルーレット | Presentation Order Randomizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
+  /* ===== SmartHR Design Tokens ===== */
   :root{
-    --bg0:#070b1a;
-    --bg1:#0d1430;
-    --accent:#00e5ff;
-    --accent2:#ff2d95;
-    --accent3:#ffd000;
-    --glass:rgba(255,255,255,.06);
-    --glass-border:rgba(255,255,255,.12);
-    --txt:#eaf2ff;
-    --muted:#8a98bd;
+    --main:#0077c7;        /* MAIN / primary */
+    --main-hover:#0071c1;
+    --brand:#00c4cc;       /* SmartHR blue */
+    --danger:#e01e5a;
+    --warning:#ffcc17;
+    --green:#0f7f85;
+    --orange:#f56121;
+
+    --text-black:#23221e;
+    --text-grey:#706d65;
+    --text-disabled:#c1bdb7;
+    --link:#0071c1;
+
+    --bg:#f8f7f6;          /* BACKGROUND */
+    --base-grey:#f5f4f3;
+    --over-bg:#f2f1f0;
+    --head:#edebe8;
+    --border:#d6d3d0;
+    --white:#fff;
+
+    --radius:8px;
+    --radius-sm:6px;
+    --shadow:0 1px 4px rgba(35,34,30,.12);
+    --shadow-lg:0 4px 16px rgba(35,34,30,.12);
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;height:100%;}
+  html,body{margin:0;}
   body{
-    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
-    color:var(--txt);
-    background:
-      radial-gradient(1200px 800px at 15% -10%, #15225a 0%, transparent 55%),
-      radial-gradient(1000px 700px at 110% 120%, #45114a 0%, transparent 55%),
-      linear-gradient(160deg,var(--bg0),var(--bg1));
-    min-height:100%;
-    overflow-x:hidden;
+    font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    color:var(--text-black);
+    background:var(--bg);
+    line-height:1.7;
+    font-size:15px;
+    -webkit-font-smoothing:antialiased;
   }
-  header{
-    text-align:center;
-    padding:26px 16px 6px;
-  }
-  header h1{
-    margin:0;
-    font-size:clamp(22px,4vw,40px);
-    letter-spacing:.04em;
-    background:linear-gradient(90deg,var(--accent),var(--accent2),var(--accent3));
-    -webkit-background-clip:text;background-clip:text;color:transparent;
-    text-shadow:0 0 30px rgba(0,229,255,.25);
-  }
-  header p{margin:6px 0 0;color:var(--muted);font-size:13px;letter-spacing:.06em;}
+  .container{max-width:1040px;margin:0 auto;padding:0 20px;}
 
-  .layout{
+  /* ===== Header ===== */
+  header.site{
+    background:var(--white);
+    border-bottom:1px solid var(--border);
+  }
+  .site-inner{
+    max-width:1040px;margin:0 auto;padding:18px 20px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .logo-dot{
+    width:30px;height:30px;border-radius:8px;flex:0 0 auto;
+    background:linear-gradient(135deg,var(--main),var(--brand));
+    display:flex;align-items:center;justify-content:center;font-size:17px;
+  }
+  header.site h1{margin:0;font-size:18px;font-weight:700;letter-spacing:.02em;}
+  header.site .sub{margin-left:auto;font-size:12px;color:var(--text-grey);}
+
+  .page-title{padding:28px 0 8px;}
+  .page-title h2{margin:0;font-size:24px;font-weight:700;}
+  .page-title p{margin:6px 0 0;color:var(--text-grey);font-size:14px;}
+
+  /* ===== Card ===== */
+  .card{
+    background:var(--white);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+  }
+  section.app{margin:18px 0 28px;}
+  .app-grid{
     display:grid;
-    grid-template-columns: minmax(360px, 1fr) minmax(320px, 460px);
-    gap:24px;
-    max-width:1180px;
-    margin:10px auto 60px;
-    padding:0 22px;
+    grid-template-columns: minmax(320px,1fr) minmax(300px,400px);
+    gap:0;
   }
-  @media (max-width:900px){
-    .layout{grid-template-columns:1fr;}
-  }
+  @media (max-width:860px){ .app-grid{grid-template-columns:1fr;} }
 
-  .panel{
-    background:var(--glass);
-    border:1px solid var(--glass-border);
-    border-radius:22px;
-    backdrop-filter:blur(14px);
-    box-shadow:0 20px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
-    padding:22px;
-  }
+  .wheel-col{padding:24px;display:flex;flex-direction:column;align-items:center;gap:18px;
+    border-right:1px solid var(--border);}
+  @media (max-width:860px){ .wheel-col{border-right:none;border-bottom:1px solid var(--border);} }
 
-  /* ---- Wheel ---- */
-  .wheel-wrap{
-    position:relative;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:18px;
-  }
-  .wheel-stage{position:relative;width:min(72vw,440px);aspect-ratio:1/1;}
-  canvas{width:100%;height:100%;display:block;
-    filter:drop-shadow(0 0 26px rgba(0,229,255,.20));}
+  .statusbar{width:100%;display:flex;justify-content:space-between;align-items:center;}
+  .status{font-size:13px;color:var(--text-grey);}
+  .mute{font-size:12px;color:var(--text-grey);display:flex;gap:6px;align-items:center;cursor:pointer;user-select:none;}
+
+  .wheel-stage{position:relative;width:min(70vw,380px);aspect-ratio:1/1;}
+  canvas#wheel{width:100%;height:100%;display:block;filter:drop-shadow(0 6px 16px rgba(35,34,30,.14));}
   .pointer{
-    position:absolute;top:-6px;left:50%;transform:translateX(-50%);
-    width:0;height:0;
-    border-left:18px solid transparent;
-    border-right:18px solid transparent;
-    border-top:30px solid var(--accent3);
-    filter:drop-shadow(0 4px 6px rgba(0,0,0,.5));
-    z-index:5;
+    position:absolute;top:-4px;left:50%;transform:translateX(-50%);
+    width:0;height:0;border-left:15px solid transparent;border-right:15px solid transparent;
+    border-top:26px solid var(--danger);filter:drop-shadow(0 2px 3px rgba(0,0,0,.25));z-index:5;
   }
   .hub{
     position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-    width:74px;height:74px;border-radius:50%;
-    background:radial-gradient(circle at 35% 30%, #fff, #b9c6ff 40%, #5a6bd6 100%);
-    box-shadow:0 0 0 6px rgba(255,255,255,.08), 0 8px 20px rgba(0,0,0,.5);
+    width:78px;height:78px;border-radius:50%;background:var(--white);
+    border:3px solid var(--border);box-shadow:var(--shadow);
     display:flex;align-items:center;justify-content:center;
-    font-weight:800;font-size:12px;color:#1a2150;text-align:center;line-height:1.1;
-    z-index:4;user-select:none;
+    font-weight:700;font-size:13px;color:var(--text-black);text-align:center;line-height:1.2;z-index:4;user-select:none;
   }
 
-  .controls{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;}
+  .big-result{min-height:30px;font-size:20px;font-weight:700;color:var(--main);text-align:center;}
+
+  .controls{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
   button{
-    font-family:inherit;cursor:pointer;border:none;border-radius:14px;
-    padding:14px 26px;font-size:16px;font-weight:800;letter-spacing:.05em;
-    color:#04122a;
-    background:linear-gradient(135deg,var(--accent),#7ef9ff);
-    box-shadow:0 8px 24px rgba(0,229,255,.35), inset 0 1px 0 rgba(255,255,255,.6);
-    transition:transform .12s ease, box-shadow .12s ease, opacity .2s;
+    font-family:inherit;cursor:pointer;border-radius:var(--radius-sm);
+    padding:11px 22px;font-size:15px;font-weight:700;transition:background .15s,box-shadow .15s,color .15s;
+    border:1px solid transparent;
   }
-  button:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,229,255,.5);}
-  button:active{transform:translateY(0);}
-  button:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none;}
-  button.ghost{
-    background:transparent;color:var(--txt);
-    border:1px solid var(--glass-border);box-shadow:none;
-  }
-  button.ghost:hover{background:rgba(255,255,255,.08);box-shadow:none;}
+  button:focus-visible{outline:3px solid rgba(0,119,199,.4);outline-offset:1px;}
+  .btn-primary{background:var(--main);color:var(--white);}
+  .btn-primary:hover:not(:disabled){background:var(--main-hover);}
+  .btn-secondary{background:var(--white);color:var(--main);border-color:var(--border);}
+  .btn-secondary:hover:not(:disabled){background:var(--base-grey);}
+  button:disabled{opacity:.45;cursor:not-allowed;}
 
-  .status{min-height:24px;font-size:14px;color:var(--muted);text-align:center;letter-spacing:.04em;}
-  .big-result{
-    text-align:center;font-weight:900;font-size:clamp(20px,3vw,30px);
-    min-height:38px;
-    background:linear-gradient(90deg,var(--accent3),var(--accent2));
-    -webkit-background-clip:text;background-clip:text;color:transparent;
-    transition:opacity .3s;
-  }
-
-  /* ---- Order list ---- */
-  .side h2{margin:0 0 14px;font-size:18px;letter-spacing:.08em;color:var(--accent);}
-  .order-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;}
+  /* ===== Order list ===== */
+  .order-col{padding:24px;}
+  .order-col h3{margin:0 0 14px;font-size:15px;font-weight:700;color:var(--text-black);
+    display:flex;align-items:center;gap:8px;}
+  .order-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
   .order-item{
-    display:flex;align-items:center;gap:14px;
-    padding:12px 14px;border-radius:14px;
-    background:rgba(255,255,255,.04);
-    border:1px solid var(--glass-border);
-    opacity:0;transform:translateY(10px);
-    animation:pop .45s cubic-bezier(.2,1.2,.3,1) forwards;
+    display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:var(--radius-sm);
+    background:var(--base-grey);border:1px solid var(--border);
+    opacity:0;transform:translateY(8px);animation:pop .4s cubic-bezier(.2,1,.3,1) forwards;
   }
   @keyframes pop{to{opacity:1;transform:translateY(0);}}
-  .rank{
-    flex:0 0 auto;width:42px;height:42px;border-radius:12px;
-    display:flex;align-items:center;justify-content:center;
-    font-weight:900;font-size:18px;color:#04122a;
-    background:linear-gradient(135deg,var(--accent2),var(--accent3));
-    box-shadow:0 6px 16px rgba(255,45,149,.35);
-  }
-  .order-item .info{display:flex;flex-direction:column;gap:2px;min-width:0;}
-  .order-item .grp{font-weight:800;font-size:15px;}
-  .order-item .members{font-size:12px;color:var(--muted);
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .placeholder{color:var(--muted);font-size:13px;text-align:center;padding:20px 0;}
+  .rank{flex:0 0 auto;width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+    font-weight:900;font-size:15px;color:var(--white);background:var(--main);}
+  .order-item .info{display:flex;flex-direction:column;min-width:0;}
+  .order-item .grp{font-weight:700;font-size:14px;}
+  .order-item .members{font-size:12px;color:var(--text-grey);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .placeholder{color:var(--text-disabled);font-size:13px;text-align:center;padding:24px 0;
+    border:1px dashed var(--border);border-radius:var(--radius-sm);}
 
-  .footnote{
-    max-width:1180px;margin:0 auto 50px;padding:0 22px;
-    color:var(--muted);font-size:12px;line-height:1.7;
+  /* ===== Guide / 解説書 ===== */
+  article.guide{padding:32px 30px 40px;margin-bottom:50px;}
+  .guide .lead{
+    background:var(--over-bg);border-left:4px solid var(--main);
+    padding:14px 18px;border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--text-black);margin:0 0 28px;
   }
-  .footnote code{color:var(--accent);background:rgba(0,229,255,.08);padding:1px 6px;border-radius:6px;}
+  .guide h2{font-size:22px;margin:0 0 6px;}
+  .guide h2 .badge{display:inline-block;background:var(--main);color:#fff;font-size:12px;font-weight:700;
+    padding:3px 9px;border-radius:999px;margin-right:10px;vertical-align:middle;}
+  .guide h3{font-size:17px;margin:34px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--head);
+    display:flex;align-items:center;gap:8px;}
+  .guide h3 .num{color:var(--main);}
+  .guide p{margin:10px 0;}
+  .guide ul{margin:10px 0;padding-left:1.3em;}
+  .guide li{margin:4px 0;}
+  .guide code{background:var(--over-bg);color:var(--main-hover);padding:1px 7px;border-radius:5px;font-size:.9em;}
+  .figure{margin:18px 0;background:var(--base-grey);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px 18px 12px;}
+  .figure svg{width:100%;height:auto;display:block;}
+  .figure figcaption{margin-top:10px;font-size:13px;color:var(--text-grey);text-align:center;}
+  .figure figcaption b{color:var(--text-black);}
+  .callout{display:flex;gap:12px;background:#fff7e0;border:1px solid #f0dca0;border-radius:var(--radius);
+    padding:14px 16px;margin:18px 0;}
+  .callout .ico{flex:0 0 auto;font-size:20px;}
+  .callout.good{background:#e8f4ec;border-color:#bfe0cb;}
+  .callout.bad{background:#fdeaf0;border-color:#f3c2d2;}
+  .compare{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0;}
+  @media (max-width:720px){.compare{grid-template-columns:1fr;}}
+  .compare .col{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:#fff;}
+  .compare .col h4{margin:0;padding:10px 12px;font-size:14px;color:#fff;}
+  .compare .col.simple h4{background:var(--text-grey);}
+  .compare .col.block h4{background:var(--main);}
+  .compare .col.strat h4{background:var(--green);}
+  .compare .col .body{padding:12px;font-size:13px;}
+  .compare .verdict{font-weight:700;margin-top:8px;}
+  .compare .verdict.ng{color:var(--danger);}
+  .compare .verdict.ok{color:var(--green);}
+  .summary-box{background:linear-gradient(135deg,#eaf4fb,#e6f8f9);border:1px solid #bfe0ea;
+    border-radius:var(--radius);padding:18px 20px;margin-top:24px;}
+  .summary-box h3{border:none;margin-top:0;}
 
-  /* confetti */
+  footer{border-top:1px solid var(--border);background:#fff;}
+  footer .inner{max-width:1040px;margin:0 auto;padding:18px 20px;font-size:12px;color:var(--text-grey);}
+  footer a{color:var(--link);}
+
   #confetti{position:fixed;inset:0;pointer-events:none;z-index:50;}
-  .toprow{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
-  .mute{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center;cursor:pointer;user-select:none;}
 </style>
 </head>
 <body>
-  <header>
-    <h1>🎯 発表順ルーレット</h1>
-    <p>ブロックランダム化方式（一様ランダム順列 / crypto乱数）で公平に決定</p>
+  <header class="site">
+    <div class="site-inner">
+      <span class="logo-dot">🎯</span>
+      <h1>発表順ルーレット</h1>
+      <span class="sub">Presentation Order Randomizer</span>
+    </div>
   </header>
 
-  <div class="layout">
-    <!-- LEFT: Wheel -->
-    <section class="panel wheel-wrap">
-      <div class="toprow" style="width:100%">
-        <span class="status" id="status" style="text-align:left">スピンを押して開始</span>
-        <label class="mute"><input type="checkbox" id="soundToggle" checked> 🔊 効果音</label>
-      </div>
-      <div class="wheel-stage">
-        <div class="pointer"></div>
-        <canvas id="wheel" width="600" height="600"></canvas>
-        <div class="hub" id="hub">残り<br>8</div>
-      </div>
-      <div class="big-result" id="bigResult"></div>
-      <div class="controls">
-        <button id="spinBtn">🎰 スピン</button>
-        <button id="resetBtn" class="ghost">リセット</button>
+  <div class="container">
+    <div class="page-title">
+      <h2>発表順をランダムに決める</h2>
+      <p>8グループの発表順を、偏りのない一様ランダム（ブロックランダム化方式）で公平に決定します。</p>
+    </div>
+
+    <!-- ===== App ===== -->
+    <section class="app card">
+      <div class="app-grid">
+        <div class="wheel-col">
+          <div class="statusbar">
+            <span class="status" id="status">「スピン」を押して開始</span>
+            <label class="mute"><input type="checkbox" id="soundToggle" checked> 🔊 効果音</label>
+          </div>
+          <div class="wheel-stage">
+            <div class="pointer"></div>
+            <canvas id="wheel" width="600" height="600"></canvas>
+            <div class="hub" id="hub">残り<br>8</div>
+          </div>
+          <div class="big-result" id="bigResult"></div>
+          <div class="controls">
+            <button id="spinBtn" class="btn-primary">🎰 スピン</button>
+            <button id="resetBtn" class="btn-secondary">リセット</button>
+          </div>
+        </div>
+
+        <div class="order-col">
+          <h3>📋 決定した発表順</h3>
+          <ol class="order-list" id="orderList">
+            <li class="placeholder">まだ決まっていません</li>
+          </ol>
+        </div>
       </div>
     </section>
 
-    <!-- RIGHT: Order -->
-    <aside class="panel side">
-      <h2>📋 決定した発表順</h2>
-      <ol class="order-list" id="orderList">
-        <li class="placeholder">まだ決まっていません</li>
-      </ol>
-    </aside>
+    <!-- ===== Guide / 解説書 ===== -->
+    <article class="guide card">
+      <h2><span class="badge">解説書</span>「ランダム」ってなに？</h2>
+      <p class="lead">
+        このアプリは、ただ適当に順番を決めているわけではありません。
+        <b>数学的に「公平」だと証明できる方法</b>で順番を決めています。
+        ここでは、その仕組みを図を使って高校生にもわかるように説明します。
+      </p>
+
+      <!-- 1 -->
+      <h3><span class="num">1.</span> そもそも「公平」ってどういうこと？</h3>
+      <p>
+        発表順が公平とは、<b>どのグループも、どの順番（1番目〜8番目）になる確率がすべて等しい</b>ということです。
+        たとえば3グループ(A・B・C)の場合、並べ方は全部で 3×2×1＝6通り。
+        公平なら、この6通りが <b>すべて同じ確率（＝6分の1ずつ）</b>で出てきます。
+      </p>
+      <figure class="figure">
+        <svg viewBox="0 0 720 230" role="img" aria-label="6通りの並び方がすべて同じ確率になる棒グラフ">
+          <!-- bars -->
+          <g font-family="inherit" font-size="13" text-anchor="middle">
+            <!-- baseline -->
+            <line x1="40" y1="170" x2="700" y2="170" stroke="#d6d3d0" stroke-width="1.5"/>
+            <text x="20" y="60" text-anchor="end" fill="#706d65" font-size="11">確率</text>
+            <!-- 6 equal bars -->
+            <!-- each: x positions -->
+            <g>
+              <rect x="60"  y="70" width="70" height="100" rx="4" fill="#0077c7"/>
+              <rect x="165" y="70" width="70" height="100" rx="4" fill="#0f7f85"/>
+              <rect x="270" y="70" width="70" height="100" rx="4" fill="#f56121"/>
+              <rect x="375" y="70" width="70" height="100" rx="4" fill="#e01e5a"/>
+              <rect x="480" y="70" width="70" height="100" rx="4" fill="#6b4fbb"/>
+              <rect x="585" y="70" width="70" height="100" rx="4" fill="#00a8b5"/>
+            </g>
+            <!-- labels under -->
+            <g fill="#23221e" font-size="12">
+              <text x="95"  y="190">ABC</text>
+              <text x="200" y="190">ACB</text>
+              <text x="305" y="190">BAC</text>
+              <text x="410" y="190">BCA</text>
+              <text x="515" y="190">CAB</text>
+              <text x="620" y="190">CBA</text>
+            </g>
+            <!-- 1/6 labels on top -->
+            <g fill="#fff" font-size="13" font-weight="700">
+              <text x="95"  y="125">1/6</text>
+              <text x="200" y="125">1/6</text>
+              <text x="305" y="125">1/6</text>
+              <text x="410" y="125">1/6</text>
+              <text x="515" y="125">1/6</text>
+              <text x="620" y="125">1/6</text>
+            </g>
+            <!-- dashed equal line -->
+            <line x1="50" y1="70" x2="660" y2="70" stroke="#0077c7" stroke-width="1.5" stroke-dasharray="6 5" opacity=".6"/>
+            <text x="350" y="215" fill="#706d65" font-size="12">どの並び方も高さ（確率）が同じ＝公平</text>
+          </g>
+        </svg>
+        <figcaption><b>図1</b>　3グループの並び方6通り。すべて同じ確率なら「公平」。</figcaption>
+      </figure>
+
+      <!-- 2 -->
+      <h3><span class="num">2.</span> やりがちだけど「偏る」決め方</h3>
+      <p>身近な決め方には、じつは公平でないものがたくさんあります。</p>
+      <div class="callout bad">
+        <span class="ico">⚠️</span>
+        <div>
+          <b>偏ってしまう例</b>
+          <ul>
+            <li><b>出席番号順・グループ番号順</b>：毎回1班が最初。順番が固定で全然ランダムじゃない。</li>
+            <li><b>「やりたい人から」</b>：積極的な班ばかり先になり、確率が等しくない。</li>
+            <li><b>あいこ続出のじゃんけん</b>：時間がかかるうえ、強さの差で偏ることも。</li>
+          </ul>
+          だからこそ、<b>確率を等しくする仕組み（＝ランダム化）</b>が必要です。
+        </div>
+      </div>
+
+      <!-- 3 -->
+      <h3><span class="num">3.</span> ランダム化の3つの方法</h3>
+      <p>
+        実は医学の研究（臨床試験）でも、患者さんをグループ分けするときに「公平なランダム化」がとても大切にされています。
+        代表的な3つの方法を、発表順決めに当てはめて比べてみましょう。
+      </p>
+      <figure class="figure">
+        <svg viewBox="0 0 720 250" role="img" aria-label="単純・ブロック・層別ランダム化の比較図">
+          <g font-family="inherit" font-size="12" text-anchor="middle">
+            <!-- simple -->
+            <text x="120" y="24" font-size="13" font-weight="700" fill="#706d65">単純ランダム化</text>
+            <text x="120" y="44" fill="#706d65" font-size="11">毎回くじを引き直す</text>
+            <g>
+              <rect x="60"  y="60" width="34" height="34" rx="6" fill="#0077c7"/><text x="77" y="82" fill="#fff" font-weight="700">2</text>
+              <rect x="103" y="60" width="34" height="34" rx="6" fill="#0077c7"/><text x="120" y="82" fill="#fff" font-weight="700">2</text>
+              <rect x="146" y="60" width="34" height="34" rx="6" fill="#0077c7"/><text x="163" y="82" fill="#fff" font-weight="700">5</text>
+            </g>
+            <text x="120" y="120" fill="#e01e5a" font-size="11">2が重複！3が抜け！</text>
+            <text x="120" y="142" fill="#e01e5a" font-weight="700" font-size="13">✗ 重複・抜けが起きる</text>
+
+            <!-- block -->
+            <text x="360" y="24" font-size="13" font-weight="700" fill="#0077c7">ブロックランダム化</text>
+            <text x="360" y="44" fill="#706d65" font-size="11">1巡で全員ちょうど1回ずつ</text>
+            <g>
+              <rect x="278" y="60" width="34" height="34" rx="6" fill="#0077c7"/><text x="295" y="82" fill="#fff" font-weight="700">3</text>
+              <rect x="321" y="60" width="34" height="34" rx="6" fill="#0f7f85"/><text x="338" y="82" fill="#fff" font-weight="700">1</text>
+              <rect x="364" y="60" width="34" height="34" rx="6" fill="#f56121"/><text x="381" y="82" fill="#fff" font-weight="700">5</text>
+              <rect x="407" y="60" width="34" height="34" rx="6" fill="#6b4fbb"/><text x="424" y="82" fill="#fff" font-weight="700">…</text>
+            </g>
+            <text x="360" y="120" fill="#0f7f85" font-size="11">全グループがダブりなく登場</text>
+            <text x="360" y="142" fill="#0f7f85" font-weight="700" font-size="13">◎ 発表順に最適</text>
+
+            <!-- stratified -->
+            <text x="600" y="24" font-size="13" font-weight="700" fill="#0f7f85">層別ランダム化</text>
+            <text x="600" y="44" fill="#706d65" font-size="11">条件で層に分けて均等化</text>
+            <g>
+              <rect x="540" y="60" width="54" height="34" rx="6" fill="#edebe8" stroke="#d6d3d0"/><text x="567" y="82" fill="#23221e" font-size="11">経験者</text>
+              <rect x="606" y="60" width="54" height="34" rx="6" fill="#edebe8" stroke="#d6d3d0"/><text x="633" y="82" fill="#23221e" font-size="11">初心者</text>
+            </g>
+            <text x="600" y="120" fill="#706d65" font-size="11">今回は分ける条件がない</text>
+            <text x="600" y="142" fill="#706d65" font-weight="700" font-size="13">— 今回は不要</text>
+
+            <!-- dividers -->
+            <line x1="240" y1="14" x2="240" y2="160" stroke="#d6d3d0" stroke-dasharray="4 4"/>
+            <line x1="480" y1="14" x2="480" y2="160" stroke="#d6d3d0" stroke-dasharray="4 4"/>
+
+            <!-- bottom verdict -->
+            <rect x="180" y="180" width="360" height="44" rx="8" fill="#eaf4fb" stroke="#bfe0ea"/>
+            <text x="360" y="207" fill="#0077c7" font-size="14" font-weight="700">→ 発表順にはブロックランダム化を採用</text>
+          </g>
+        </svg>
+        <figcaption><b>図2</b>　3つのランダム化の比較。発表順は「全グループ1回ずつ」が必要なので<b>ブロックランダム化</b>が最適。</figcaption>
+      </figure>
+      <div class="compare">
+        <div class="col simple"><h4>単純ランダム化</h4><div class="body">毎回くじを引き直す。同じ班が続けて当たったり、当たらない班が出たりする。<div class="verdict ng">✗ 発表順には不向き</div></div></div>
+        <div class="col block"><h4>ブロックランダム化</h4><div class="body">1巡の中で全グループがちょうど1回ずつ・偏りなく並ぶ。<div class="verdict ok">◎ これを採用</div></div></div>
+        <div class="col strat"><h4>層別ランダム化</h4><div class="body">学年や経験など結果に影響する条件で層を分け、各層を均等にする。<div class="verdict">— 今回は条件がなく不要</div></div></div>
+      </div>
+
+      <!-- 4 -->
+      <h3><span class="num">4.</span> コンピュータの「サイコロ」の落とし穴</h3>
+      <p>
+        コンピュータも乱数（ランダムな数）を作れますが、使い方をまちがえると<b>こっそり偏る</b>ことがあります。
+        これを <b>「剰余（じょうよ）バイアス」</b>といいます。「剰余」とは割り算の<b>あまり</b>のこと。
+      </p>
+      <p>
+        例：0〜9の10個の数を、3グループに「あまり」で配ると…？
+        <code>0,3,6,9 → グループ0</code>／<code>1,4,7 → グループ1</code>／<code>2,5,8 → グループ2</code>。
+        グループ0だけ4個、他は3個。これでは不公平です。
+      </p>
+      <figure class="figure">
+        <svg viewBox="0 0 720 250" role="img" aria-label="剰余バイアスの図。10個の数を3で割った余りで配ると偏る">
+          <g font-family="inherit" font-size="12" text-anchor="middle">
+            <text x="360" y="22" font-size="13" font-weight="700">0〜9 の数を「3で割ったあまり」で配ると…</text>
+            <!-- 10 number chips -->
+            <g>
+              <!-- color by remainder: 0=blue,1=green,2=orange -->
+              <g font-weight="700" fill="#fff">
+                <rect x="60"  y="40" width="40" height="40" rx="8" fill="#0077c7"/><text x="80"  y="66">0</text>
+                <rect x="128" y="40" width="40" height="40" rx="8" fill="#0f7f85"/><text x="148" y="66">1</text>
+                <rect x="196" y="40" width="40" height="40" rx="8" fill="#f56121"/><text x="216" y="66">2</text>
+                <rect x="264" y="40" width="40" height="40" rx="8" fill="#0077c7"/><text x="284" y="66">3</text>
+                <rect x="332" y="40" width="40" height="40" rx="8" fill="#0f7f85"/><text x="352" y="66">4</text>
+                <rect x="400" y="40" width="40" height="40" rx="8" fill="#f56121"/><text x="420" y="66">5</text>
+                <rect x="468" y="40" width="40" height="40" rx="8" fill="#0077c7"/><text x="488" y="66">6</text>
+                <rect x="536" y="40" width="40" height="40" rx="8" fill="#0f7f85"/><text x="556" y="66">7</text>
+                <rect x="604" y="40" width="40" height="40" rx="8" fill="#f56121"/><text x="624" y="66">8</text>
+                <rect x="672" y="40" width="40" height="40" rx="8" fill="#0077c7" stroke="#e01e5a" stroke-width="3"/><text x="692" y="66">9</text>
+              </g>
+            </g>
+            <!-- arrows down to 3 buckets -->
+            <g stroke="#c1bdb7" stroke-width="1.5">
+              <line x1="170" y1="100" x2="150" y2="135"/><line x1="170" y1="100" x2="170" y2="135"/>
+            </g>
+            <!-- buckets -->
+            <g>
+              <rect x="70"  y="140" width="180" height="80" rx="10" fill="#eaf4fb" stroke="#0077c7"/>
+              <rect x="270" y="140" width="180" height="80" rx="10" fill="#e8f4ec" stroke="#0f7f85"/>
+              <rect x="470" y="140" width="180" height="80" rx="10" fill="#fdeee4" stroke="#f56121"/>
+              <text x="160" y="162" fill="#0077c7" font-weight="700">あまり0 のグループ</text>
+              <text x="360" y="162" fill="#0f7f85" font-weight="700">あまり1 のグループ</text>
+              <text x="560" y="162" fill="#f56121" font-weight="700">あまり2 のグループ</text>
+              <text x="160" y="195" fill="#23221e" font-size="14" font-weight="900">0,3,6,9 ＝ 4個</text>
+              <text x="360" y="195" fill="#23221e" font-size="14" font-weight="900">1,4,7 ＝ 3個</text>
+              <text x="560" y="195" fill="#23221e" font-size="14" font-weight="900">2,5,8 ＝ 3個</text>
+              <text x="160" y="213" fill="#e01e5a" font-size="11" font-weight="700">← 多い！不公平</text>
+            </g>
+          </g>
+        </svg>
+        <figcaption><b>図3</b>　単純に「あまり」で配ると数が偏る（4対3対3）。これが<b>剰余バイアス</b>。</figcaption>
+      </figure>
+      <div class="callout good">
+        <span class="ico">✅</span>
+        <div>
+          <b>解決法：棄却（ききゃく）サンプリング</b><br>
+          あまりが出る原因の「はみ出した数」（上の図の <b>9</b>）を<b>使わずに引き直す</b>だけ。
+          0〜8 の9個だけ使えば、3グループに <b>3個ずつ</b>ぴったり。これで偏りが消えます。
+          このアプリは <code>crypto.getRandomValues</code> という質の高い乱数に、この引き直しを組み合わせて
+          <b>偏りゼロの乱数</b>を作っています。
+        </div>
+      </div>
+
+      <!-- 5 -->
+      <h3><span class="num">5.</span> このアプリの決め方（1枚ずつ引いて並べる）</h3>
+      <p>
+        アプリの中身はとてもシンプル。<b>「残っているグループから1つ、まったく同じ確率で引いて、順番に並べる」</b>
+        ——これを全グループがなくなるまでくり返すだけです。
+        この方法は <b>フィッシャー・イェーツのシャッフル</b>と呼ばれ、<b>すべての並び方が等確率になる</b>ことが数学的に保証されています（＝図1の状態）。
+      </p>
+      <figure class="figure">
+        <svg viewBox="0 0 720 270" role="img" aria-label="残りから1つずつ引いて発表順に並べる手順">
+          <g font-family="inherit" font-size="12">
+            <!-- Step1 -->
+            <text x="20" y="30" font-weight="700" fill="#0077c7">STEP 1</text>
+            <text x="90" y="30" fill="#706d65">残り8グループから1つを等確率で引く</text>
+            <g font-weight="700" fill="#fff" text-anchor="middle">
+              <rect x="20"  y="42" width="36" height="36" rx="7" fill="#0077c7"/><text x="38"  y="66">1</text>
+              <rect x="62"  y="42" width="36" height="36" rx="7" fill="#0f7f85"/><text x="80"  y="66">2</text>
+              <rect x="104" y="42" width="36" height="36" rx="7" fill="#f56121" stroke="#e01e5a" stroke-width="3"/><text x="122" y="66">3</text>
+              <rect x="146" y="42" width="36" height="36" rx="7" fill="#e01e5a"/><text x="164" y="66">4</text>
+              <rect x="188" y="42" width="36" height="36" rx="7" fill="#6b4fbb"/><text x="206" y="66">5</text>
+              <rect x="230" y="42" width="36" height="36" rx="7" fill="#00a8b5"/><text x="248" y="66">6</text>
+              <rect x="272" y="42" width="36" height="36" rx="7" fill="#2e9e5b"/><text x="290" y="66">7</text>
+              <rect x="314" y="42" width="36" height="36" rx="7" fill="#c98a00"/><text x="332" y="66">8</text>
+            </g>
+            <text x="122" y="98" text-anchor="middle" fill="#e01e5a" font-size="11" font-weight="700">↑ 3 が当選</text>
+            <!-- arrow -->
+            <text x="400" y="66" font-size="22" fill="#c1bdb7">→</text>
+            <!-- order list -->
+            <text x="440" y="30" font-weight="700" fill="#0077c7">発表順</text>
+            <g>
+              <rect x="440" y="42" width="240" height="36" rx="7" fill="#eaf4fb" stroke="#0077c7"/>
+              <text x="455" y="66" fill="#0077c7" font-weight="700">1番目 ▸ グループ3</text>
+            </g>
+
+            <!-- Step2 -->
+            <text x="20" y="135" font-weight="700" fill="#0077c7">STEP 2</text>
+            <text x="90" y="135" fill="#706d65">引いた3を除き、残り7から等確率で引く</text>
+            <g font-weight="700" fill="#fff" text-anchor="middle">
+              <rect x="20"  y="147" width="36" height="36" rx="7" fill="#0077c7"/><text x="38"  y="171">1</text>
+              <rect x="62"  y="147" width="36" height="36" rx="7" fill="#0f7f85"/><text x="80"  y="171">2</text>
+              <rect x="104" y="147" width="36" height="36" rx="7" fill="#edebe8" stroke="#d6d3d0"/><text x="122" y="171" fill="#c1bdb7">3</text>
+              <rect x="146" y="147" width="36" height="36" rx="7" fill="#e01e5a"/><text x="164" y="171">4</text>
+              <rect x="188" y="147" width="36" height="36" rx="7" fill="#6b4fbb"/><text x="206" y="171">5</text>
+              <rect x="230" y="147" width="36" height="36" rx="7" fill="#00a8b5" stroke="#e01e5a" stroke-width="3"/><text x="248" y="171">6</text>
+              <rect x="272" y="147" width="36" height="36" rx="7" fill="#2e9e5b"/><text x="290" y="171">7</text>
+              <rect x="314" y="147" width="36" height="36" rx="7" fill="#c98a00"/><text x="332" y="171">8</text>
+            </g>
+            <text x="248" y="203" text-anchor="middle" fill="#e01e5a" font-size="11" font-weight="700">↑ 6 が当選</text>
+            <text x="400" y="171" font-size="22" fill="#c1bdb7">→</text>
+            <g>
+              <rect x="440" y="147" width="240" height="36" rx="7" fill="#eaf4fb" stroke="#0077c7"/>
+              <text x="455" y="171" fill="#0077c7" font-weight="700">2番目 ▸ グループ6</text>
+            </g>
+
+            <!-- Step3 -->
+            <text x="20" y="240" font-weight="700" fill="#0077c7">繰り返す…</text>
+            <text x="150" y="240" fill="#706d65">残りが0になるまで続け、全グループの発表順が完成！</text>
+          </g>
+        </svg>
+        <figcaption><b>図4</b>　残りから1つずつ等確率で引いて並べる（フィッシャー・イェーツのシャッフル）。だから全グループ重複なし＆全パターン等確率。</figcaption>
+      </figure>
+
+      <!-- summary -->
+      <div class="summary-box">
+        <h3>📌 まとめ</h3>
+        <ul>
+          <li><b>公平 ＝ どの順番になる確率もすべて同じ</b>（図1）。</li>
+          <li>番号順や「やりたい人から」は偏るので、ランダム化が必要（図2）。</li>
+          <li>発表順は全グループ1回ずつ並べるので <b>ブロックランダム化</b>が最適（図2・図3）。</li>
+          <li>コンピュータ乱数の<b>剰余バイアス</b>は、<b>棄却サンプリング</b>で取り除ける（図3）。</li>
+          <li>実装は<b>「残りから1つずつ等確率で引く」</b>＝フィッシャー・イェーツで、全パターン等確率を保証（図4）。</li>
+        </ul>
+      </div>
+    </article>
   </div>
 
-  <p class="footnote">
-    <strong>採用したランダム化手法：</strong>残りのグループから1つずつ均等な確率で抽出する方式（＝Fisher-Yatesシャッフルと等価／ブロックランダム化の考え方）。
-    全グループが重複・抜けなくちょうど1回ずつ並び、すべての順番が等確率になります。
-    乱数は <code>crypto.getRandomValues</code> を棄却サンプリングと併用し、剰余バイアスのない一様乱数を使用しています。
-  </p>
+  <footer>
+    <div class="inner">
+      採用手法：ブロックランダム化（一様ランダム順列／Fisher-Yates と等価）。乱数は <code>crypto.getRandomValues</code> ＋棄却サンプリングで剰余バイアスを除去。<br>
+      参考：亀田メディカルセンター「ランダム化」 <a href="https://www.kameda.com/pr/intensive_care_medicine/post_2.html" target="_blank" rel="noopener">https://www.kameda.com/pr/intensive_care_medicine/post_2.html</a>
+      ／ デザイン：<a href="https://smarthr.design/products/components/" target="_blank" rel="noopener">SmartHR Design System</a>
+    </div>
+  </footer>
 
   <canvas id="confetti"></canvas>
 
@@ -213,10 +528,11 @@ const GROUPS = [
 ];
 const N = GROUPS.length;
 const SEG = (Math.PI*2)/N;
-const COLORS = ["#00e5ff","#ff2d95","#ffd000","#7c5cff","#27e36b","#ff7a18","#15c0ff","#ff5b8a"];
+/* SmartHR配色をベースにしたアクセシブルな8色 */
+const COLORS = ["#0077c7","#0f7f85","#f56121","#e01e5a","#6b4fbb","#00a8b5","#2e9e5b","#c98a00"];
 
 /* ====== 偏りのない乱数（棄却サンプリング） ====== */
-function randInt(n){               // 0..n-1 を一様に
+function randInt(n){
   const max = Math.floor(0xFFFFFFFF / n) * n;
   const buf = new Uint32Array(1);
   let x;
@@ -225,16 +541,16 @@ function randInt(n){               // 0..n-1 を一様に
 }
 
 /* ====== 状態 ====== */
-let decided = [];                 // 決定済みグループ番号(1始まり)
+let decided = [];
 let remaining = GROUPS.map(g=>g.no);
-let rotation = 0;                 // 現在のホイール角
+let rotation = 0;
 let spinning = false;
 
 /* ====== Canvas ====== */
 const cv = document.getElementById("wheel");
 const ctx = cv.getContext("2d");
 const SIZE = cv.width;
-const CX = SIZE/2, CY = SIZE/2, R = SIZE/2 - 10;
+const CX = SIZE/2, CY = SIZE/2, R = SIZE/2 - 12;
 
 function drawWheel(rot){
   ctx.clearRect(0,0,SIZE,SIZE);
@@ -247,33 +563,31 @@ function drawWheel(rot){
     ctx.arc(CX,CY,R,start,end);
     ctx.closePath();
     if(isDone){
-      ctx.fillStyle = "rgba(120,130,170,.18)";
+      ctx.fillStyle = "#edebe8";
     }else{
-      const grad = ctx.createRadialGradient(CX,CY,R*0.25,CX,CY,R);
-      grad.addColorStop(0, COLORS[i]);
-      grad.addColorStop(1, shade(COLORS[i],-30));
+      const grad = ctx.createRadialGradient(CX,CY,R*0.2,CX,CY,R);
+      grad.addColorStop(0, shade(COLORS[i],18));
+      grad.addColorStop(1, COLORS[i]);
       ctx.fillStyle = grad;
     }
     ctx.fill();
     ctx.lineWidth = 3;
-    ctx.strokeStyle = "rgba(7,11,26,.85)";
+    ctx.strokeStyle = "#ffffff";
     ctx.stroke();
 
-    // ラベル
     ctx.save();
     ctx.translate(CX,CY);
     ctx.rotate(start + SEG/2);
     ctx.textAlign = "right";
-    ctx.fillStyle = isDone ? "rgba(255,255,255,.35)" : "#04122a";
-    ctx.font = "900 40px system-ui, sans-serif";
-    ctx.fillText("G"+GROUPS[i].no, R-26, 14);
+    ctx.fillStyle = isDone ? "#c1bdb7" : "#ffffff";
+    ctx.font = "900 38px 'Noto Sans JP', system-ui, sans-serif";
+    ctx.fillText("G"+GROUPS[i].no, R-24, 13);
     ctx.restore();
   }
-  // 外周リング
   ctx.beginPath();
   ctx.arc(CX,CY,R,0,Math.PI*2);
-  ctx.lineWidth=8;
-  ctx.strokeStyle="rgba(255,255,255,.10)";
+  ctx.lineWidth=4;
+  ctx.strokeStyle="#d6d3d0";
   ctx.stroke();
 }
 function shade(hex,p){
@@ -285,7 +599,7 @@ function shade(hex,p){
 
 /* ====== サウンド ====== */
 let audioCtx=null;
-function beep(freq,dur,type="square",vol=.08){
+function beep(freq,dur,type="square",vol=.06){
   if(!document.getElementById("soundToggle").checked) return;
   try{
     audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
@@ -298,7 +612,7 @@ function beep(freq,dur,type="square",vol=.08){
   }catch(e){}
 }
 function fanfare(){
-  [523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,.25,"triangle",.12),i*110));
+  [523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,.25,"triangle",.10),i*110));
 }
 
 /* ====== スピン ====== */
@@ -315,33 +629,29 @@ function spin(){
   bigResult.textContent="";
   statusEl.textContent="抽選中…";
 
-  // 残りから一様ランダムに選ぶ（＝順列を1つずつ確定 / ブロックランダム化）
   const pickIdx = randInt(remaining.length);
   const targetNo = remaining[pickIdx];
-  const segIndex = targetNo - 1;             // 配置はG番号順固定
+  const segIndex = targetNo - 1;
 
-  // 目標セグメント中心をポインタ(真上 -90°)へ
   const center = segIndex*SEG + SEG/2;
-  const turns = 5 + randInt(3);              // 演出用の回転数
+  const turns = 5 + randInt(3);
   const targetRot = (-Math.PI/2 - center) - turns*Math.PI*2;
 
   const startRot = rotation % (Math.PI*2);
-  const normTarget = targetRot;              // 連続値でOK
-  const delta = normTarget - startRot;
+  const delta = targetRot - startRot;
   const dur = 4200;
   const t0 = performance.now();
   let lastSeg = -1;
 
   function frame(now){
     let p = Math.min(1,(now-t0)/dur);
-    const eased = 1 - Math.pow(1-p, 3);      // ease-out cubic
+    const eased = 1 - Math.pow(1-p, 3);
     rotation = startRot + delta*eased;
     drawWheel(rotation);
 
-    // セグメント通過音
     const ang = ((-Math.PI/2 - rotation) % (Math.PI*2) + Math.PI*2) % (Math.PI*2);
     const curSeg = Math.floor(ang/SEG);
-    if(curSeg!==lastSeg){ lastSeg=curSeg; beep(380+curSeg*12,.04,"square",.05); }
+    if(curSeg!==lastSeg){ lastSeg=curSeg; beep(360+curSeg*12,.04,"square",.04); }
 
     if(p<1){ requestAnimationFrame(frame); }
     else { finishSpin(targetNo); }
@@ -355,7 +665,6 @@ function finishSpin(no){
   drawWheel(rotation);
   fanfare();
 
-  const g = GROUPS[no-1];
   bigResult.textContent = `${decided.length}番目 → グループ${no}`;
   statusEl.textContent = remaining.length>0
       ? `残り ${remaining.length} グループ`
@@ -367,8 +676,7 @@ function finishSpin(no){
 
   spinning=false;
   resetBtn.disabled=false;
-  if(remaining.length>0){ spinBtn.disabled=false; }
-  else{ spinBtn.disabled=true; }
+  spinBtn.disabled = remaining.length===0;
 }
 
 function renderOrder(){
@@ -397,7 +705,7 @@ function reset(){
   decided=[]; remaining=GROUPS.map(g=>g.no);
   rotation=0; spinning=false;
   spinBtn.disabled=false; resetBtn.disabled=false;
-  bigResult.textContent=""; statusEl.textContent="スピンを押して開始";
+  bigResult.textContent=""; statusEl.textContent="「スピン」を押して開始";
   hub.innerHTML="残り<br>8";
   drawWheel(rotation); renderOrder();
 }
